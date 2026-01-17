@@ -334,7 +334,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /stats для администратора"""
     
     # ⚠️ ЗАМЕНИТЕ НА ВАШ ID TELEGRAM!
-    ADMIN_ID = 123456789  # Получите через @userinfobot
+    ADMIN_ID = 6566770852  # Получите через @userinfobot
     
     if update.effective_user.id != ADMIN_ID:
         await update.message.reply_text("❌ Только для админа!")
