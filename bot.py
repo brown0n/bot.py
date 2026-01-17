@@ -1,24 +1,50 @@
+# ==================== ИМПОРТЫ ====================
 import logging
 import os
 import asyncio
-from datetime import datetime
+import json
+from datetime import datetime, date
 from typing import List, Dict, Set
 from dataclasses import dataclass
 import pickle
-# ==================== ПРОСТАЯ АНАЛИТИКА ====================
-import json
-from datetime import datetime, date
 
-# Файл для статистики
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+    JobQueue
+)
+
+# ==================== НАСТРОЙКИ БОТА ====================
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8228635094:AAG00B2fq13G-kDGCkXO6O7wZydDQqyZpmk")
+
+# Каналы для проверки
+CHANNELS_TO_CHECK = [
+    "@your_channel_1",
+    "@your_channel_2",
+    "@pepeNFTchanne",
+    "@your_channel_4",
+    "@your_channel_5",
+]
+
+# Файлы для хранения данных
+DATA_FILE = "santa_bot_data.pkl"
 STATS_FILE = "bot_stats.json"
 
-# Загружаем статистику
+# Интервал проверки подписок
+CHECK_INTERVAL = 60
+
+# ==================== ПРОСТАЯ АНАЛИТИКА ====================
 def load_stats():
+    """Загружает статистику из файла"""
     try:
         with open(STATS_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except:
-        # Базовая структура
         return {
             "total_users": 0,
             "total_starts": 0,
@@ -31,13 +57,13 @@ def load_stats():
             "user_ids": []
         }
 
-# Сохраняем статистику
 def save_stats(stats):
+    """Сохраняет статистику в файл"""
     with open(STATS_FILE, 'w', encoding='utf-8') as f:
         json.dump(stats, f, ensure_ascii=False, indent=2)
 
-# Обновляем статистику
 def update_stats(event_type, user_id=None):
+    """Обновляет статистику"""
     stats = load_stats()
     today = str(date.today())
     
@@ -67,106 +93,6 @@ def update_stats(event_type, user_id=None):
         stats["failed_subs"] += 1
     
     save_stats(stats)
-
-# ==================== ДОБАВЛЯЕМ В КОМАНДЫ ====================
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Простая команда /stats"""
-    
-    # ID администратора (ЗАМЕНИТЕ НА СВОЙ!)
-    ADMIN_ID = 1478448500  # ⬅️ ВАШ ID TELEGRAM!
-    
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ Только для админа!")
-        return
-    
-    stats = load_stats()
-    
-    message = f"""📊 *СТАТИСТИКА БОТА*
-
-👥 *Пользователи:*
-• Всего уникальных: {stats['total_users']}
-• Запусков бота: {stats['total_starts']}
-• Сегодня: {stats['today_starts']}
-
-🎁 *Подписки:*
-• Всего проверок: {stats['total_subscriptions']}
-• ✅ Успешных: {stats['successful_subs']}
-• ❌ Неудачных: {stats['failed_subs']}
-• Сегодня успешных: {stats['today_subs']}
-
-📅 *Сегодня:* {stats['last_reset']}
-⏰ *Отчет создан:* {datetime.now().strftime('%H:%M %d.%m.%Y')}"""
-    
-    await update.message.reply_text(message, parse_mode='Markdown')
-
-# ==================== ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЕ КОМАНДЫ ====================
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обновленный /start"""
-    user = update.effective_user
-    
-    # Собираем статистику
-    update_stats("start", user.id)
-    
-    # ... ваш существующий код /start ...
-    keyboard = [[
-        InlineKeyboardButton("🎁 Получить заветный подарок", callback_data="get_gift")
-    ]]
-    markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(WELCOME_MESSAGE, reply_markup=markup, parse_mode='Markdown')
-
-# В verify_subscriptions добавляем статистику:
-async def verify_subscriptions(query, context):
-    """Обновленная проверка подписок"""
-    # ... ваш существующий код ...
-    
-    # Проверяем подписки
-    if not not_subscribed:
-        # УСПЕХ
-        update_stats("subscription_success")
-        user_sub.gift_received = True
-        await query.edit_message_text(SUCCESS_MESSAGE, parse_mode='Markdown')
-    else:
-        # НЕУДАЧА
-        update_stats("subscription_failed")
-        await show_failed_subscriptions(query, not_subscribed)
-
-# ==================== ДОБАВЬТЕ ЭТУ КОМАНДУ В main() ====================
-# В функции main() найдите:
-# application.add_handler(CommandHandler("start", start_command))
-
-# И ДОБАВЬТЕ ПОД НИМ:
-application.add_handler(CommandHandler("stats", stats_command))
-
-
-
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-    JobQueue
-)
-
-# ==================== НАСТРОЙКИ БОТА ====================
-BOT_TOKEN = "8228635094:AAG00B2fq13G-kDGCkXO6O7wZydDQqyZpmk"  # ⚠️ Создайте новый токен!
-
-# Каналы для проверки (СПОНСОРЫ)
-CHANNELS_TO_CHECK = [
-    "@your_channel_1",  # ⬅️ Ваш канал
-    "@your_channel_2",    # ⬅️ Другие каналы
-    "@pepeNFTchanne", # ⬅️ Добавьте еще каналы
-    "@your_channel_4", # ⬅️ Всего должно быть 5
-    "@your_channel_5", # ⬅️ Замените на реальные
-]
-
-# Файл для хранения данных пользователей
-DATA_FILE = "santa_bot_data.pkl"
-
-# Интервал проверки подписок (в секундах)
-CHECK_INTERVAL = 60
 
 # ==================== ТЕКСТОВЫЕ СООБЩЕНИЯ ====================
 WELCOME_MESSAGE = """🎅 *Здравствуй, путник!*
@@ -259,6 +185,7 @@ HELP_MESSAGE = """🦌 *Помощь по боту Деда Мороза*
 *Команды:*
 /start - начать получение подарка
 /status - статус ваших подписок
+/stats - статистика бота (только для админа)
 /help - эта справка"""
 
 STATUS_MESSAGE = """📊 *Ваш статус у Деда Мороза*
@@ -276,6 +203,7 @@ UNKNOWN_MESSAGE = """🎅 *Ой-ой-ой!*
 Попробуй:
 • /start - получить подарок
 • /status - статус ваших подписок
+• /stats - статистика (админ)
 • /help - помощь от эльфов"""
 
 # ==================== КЛАССЫ ====================
@@ -382,8 +310,11 @@ def setup_logging():
     )
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /start - приветственное сообщение С КНОПКОЙ"""
+    """Команда /start - приветственное сообщение с аналитикой"""
     user = update.effective_user
+    
+    # Собираем статистику
+    update_stats("start", user.id)
     
     # Создаем кнопку для получения подарка
     keyboard = [[
@@ -398,6 +329,36 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=markup,
         parse_mode='Markdown'
     )
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /stats для администратора"""
+    
+    # ⚠️ ЗАМЕНИТЕ НА ВАШ ID TELEGRAM!
+    ADMIN_ID = 123456789  # Получите через @userinfobot
+    
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Только для админа!")
+        return
+    
+    stats = load_stats()
+    
+    message = f"""📊 *СТАТИСТИКА БОТА*
+
+👥 *Пользователи:*
+• Всего уникальных: {stats['total_users']}
+• Запусков бота: {stats['total_starts']}
+• Сегодня: {stats['today_starts']}
+
+🎁 *Подписки:*
+• Всего проверок: {stats['total_subscriptions']}
+• ✅ Успешных: {stats['successful_subs']}
+• ❌ Неудачных: {stats['failed_subs']}
+• Сегодня успешных: {stats['today_subs']}
+
+📅 *Сегодня:* {stats['last_reset']}
+⏰ *Отчет создан:* {datetime.now().strftime('%H:%M %d.%m.%Y')}"""
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка нажатий кнопок"""
@@ -461,7 +422,7 @@ async def show_sponsors_message(message):
     )
 
 async def verify_subscriptions(query, context):
-    """Проверка подписок пользователя"""
+    """Проверка подписок пользователя с аналитикой"""
     user = query.from_user
     
     # Редактируем текущее сообщение на проверку
@@ -502,14 +463,18 @@ async def verify_subscriptions(query, context):
     # Сохраняем данные
     save_data()
     
-    # Показываем результат
+    # Собираем статистику
     if not not_subscribed:
+        # УСПЕХ
+        update_stats("subscription_success")
         user_sub.gift_received = True
         await query.edit_message_text(
             SUCCESS_MESSAGE,
             parse_mode='Markdown'
         )
     else:
+        # НЕУДАЧА
+        update_stats("subscription_failed")
         await show_failed_subscriptions(query, not_subscribed)
 
 async def send_subscription_notifications(context, user_id, user_name, unsubscribed, resubscribed, user_sub):
@@ -665,6 +630,11 @@ def main():
     
     load_data()
     
+    # Загружаем и показываем статистику
+    stats = load_stats()
+    print(f"📊 Статистика: {stats['total_users']} пользователей, {stats['successful_subs']} успешных подписок")
+    print("=" * 50)
+    
     if "ВАШ_НОВЫЙ_ТОКЕН_ЗДЕСЬ" in BOT_TOKEN:
         print("❌ ОШИБКА: Токен бота не настроен!")
         print("\n📝 Как получить токен:")
@@ -680,6 +650,8 @@ def main():
     for i, channel in enumerate(CHANNELS_TO_CHECK, 1):
         print(f"  {i}. {channel}")
     print(f"👥 Путников в книге Деда Мороза: {len(user_data)}")
+    print(f"📊 Уникальных пользователей: {stats['total_users']}")
+    print(f"✅ Успешных подписок: {stats['successful_subs']}")
     print(f"⏰ Интервал проверки: {CHECK_INTERVAL} секунд")
     print("=" * 50)
     
@@ -695,15 +667,17 @@ def main():
             )
             print("✅ Периодическая проверка настроена")
         
+        # Регистрация команд
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("status", status_command))
+        application.add_handler(CommandHandler("stats", stats_command))
         application.add_handler(CommandHandler("help", help_command))
         
         application.add_handler(CallbackQueryHandler(button_handler))
-        
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
         print("✅ Бот Деда Мороза готов к работе!")
+        print("📊 Команда /stats доступна для админа")
         print("🚀 Запускаю волшебство...")
         print("=" * 50)
         print("📱 Идите в Telegram и найдите Деда Мороза")
@@ -717,10 +691,9 @@ def main():
         print("🛑 Для остановки нажмите Ctrl+C")
         print("=" * 50)
         
-        # КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
         application.run_polling(
             allowed_updates=Update.ALL_TYPES,
-            drop_pending_updates=True  # ← ЭТО ИСПРАВЛЯЕТ КОНФЛИКТ
+            drop_pending_updates=True
         )
         
     except Exception as e:
