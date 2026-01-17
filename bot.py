@@ -5,6 +5,139 @@ from datetime import datetime
 from typing import List, Dict, Set
 from dataclasses import dataclass
 import pickle
+# ==================== ПРОСТАЯ АНАЛИТИКА ====================
+import json
+from datetime import datetime, date
+
+# Файл для статистики
+STATS_FILE = "bot_stats.json"
+
+# Загружаем статистику
+def load_stats():
+    try:
+        with open(STATS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        # Базовая структура
+        return {
+            "total_users": 0,
+            "total_starts": 0,
+            "total_subscriptions": 0,
+            "successful_subs": 0,
+            "failed_subs": 0,
+            "today_starts": 0,
+            "today_subs": 0,
+            "last_reset": str(date.today()),
+            "user_ids": []
+        }
+
+# Сохраняем статистику
+def save_stats(stats):
+    with open(STATS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(stats, f, ensure_ascii=False, indent=2)
+
+# Обновляем статистику
+def update_stats(event_type, user_id=None):
+    stats = load_stats()
+    today = str(date.today())
+    
+    # Сбрасываем дневную статистику если новый день
+    if stats["last_reset"] != today:
+        stats["today_starts"] = 0
+        stats["today_subs"] = 0
+        stats["last_reset"] = today
+    
+    # Обрабатываем события
+    if event_type == "start":
+        stats["total_starts"] += 1
+        stats["today_starts"] += 1
+        
+        # Уникальные пользователи
+        if user_id and str(user_id) not in stats["user_ids"]:
+            stats["user_ids"].append(str(user_id))
+            stats["total_users"] = len(stats["user_ids"])
+    
+    elif event_type == "subscription_success":
+        stats["total_subscriptions"] += 1
+        stats["successful_subs"] += 1
+        stats["today_subs"] += 1
+    
+    elif event_type == "subscription_failed":
+        stats["total_subscriptions"] += 1
+        stats["failed_subs"] += 1
+    
+    save_stats(stats)
+
+# ==================== ДОБАВЛЯЕМ В КОМАНДЫ ====================
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Простая команда /stats"""
+    
+    # ID администратора (ЗАМЕНИТЕ НА СВОЙ!)
+    ADMIN_ID = 1478448500  # ⬅️ ВАШ ID TELEGRAM!
+    
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ Только для админа!")
+        return
+    
+    stats = load_stats()
+    
+    message = f"""📊 *СТАТИСТИКА БОТА*
+
+👥 *Пользователи:*
+• Всего уникальных: {stats['total_users']}
+• Запусков бота: {stats['total_starts']}
+• Сегодня: {stats['today_starts']}
+
+🎁 *Подписки:*
+• Всего проверок: {stats['total_subscriptions']}
+• ✅ Успешных: {stats['successful_subs']}
+• ❌ Неудачных: {stats['failed_subs']}
+• Сегодня успешных: {stats['today_subs']}
+
+📅 *Сегодня:* {stats['last_reset']}
+⏰ *Отчет создан:* {datetime.now().strftime('%H:%M %d.%m.%Y')}"""
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
+
+# ==================== ОБНОВЛЯЕМ СУЩЕСТВУЮЩИЕ КОМАНДЫ ====================
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обновленный /start"""
+    user = update.effective_user
+    
+    # Собираем статистику
+    update_stats("start", user.id)
+    
+    # ... ваш существующий код /start ...
+    keyboard = [[
+        InlineKeyboardButton("🎁 Получить заветный подарок", callback_data="get_gift")
+    ]]
+    markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(WELCOME_MESSAGE, reply_markup=markup, parse_mode='Markdown')
+
+# В verify_subscriptions добавляем статистику:
+async def verify_subscriptions(query, context):
+    """Обновленная проверка подписок"""
+    # ... ваш существующий код ...
+    
+    # Проверяем подписки
+    if not not_subscribed:
+        # УСПЕХ
+        update_stats("subscription_success")
+        user_sub.gift_received = True
+        await query.edit_message_text(SUCCESS_MESSAGE, parse_mode='Markdown')
+    else:
+        # НЕУДАЧА
+        update_stats("subscription_failed")
+        await show_failed_subscriptions(query, not_subscribed)
+
+# ==================== ДОБАВЬТЕ ЭТУ КОМАНДУ В main() ====================
+# В функции main() найдите:
+# application.add_handler(CommandHandler("start", start_command))
+
+# И ДОБАВЬТЕ ПОД НИМ:
+application.add_handler(CommandHandler("stats", stats_command))
+
+
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
