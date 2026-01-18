@@ -26,12 +26,12 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "8228635094:AAG00B2fq13G-kDGCkXO6O7wZydD
 CHANNELS_TO_CHECK = [
     "@pepeNFTchanne",    # 1
     "@getratpupsik",    # 2  
-    "@sakura_nft",     # 3
-    "@nifonis",    # 4
-    "@amnezia_stars ",    # 5
-    "@starsbyqwex",    # 6
-    "@Rembo_Stakuezz",    # 7 - НОВЫЙ ⭐
-    "@OFFNikPRIME",    # 8 - НОВЫЙ ⭐
+    "@starcaxar",     # 3
+    "@hilsochka",    # 4
+    "@De_Riz ",    # 5
+    "@angell_kiiiss",    # 6
+    "@zolognaaakk",    # 7 - НОВЫЙ ⭐
+    "@sakura_nft",    # 8 - НОВЫЙ ⭐
 ]
 
 # Файлы для хранения данных
