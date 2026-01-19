@@ -25,9 +25,9 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "8228635094:AAG00B2fq13G-kDGCkXO6O7wZydD
 # Каналы для проверки - ТЕПЕРЬ 8 КАНАЛОВ! ⭐
 CHANNELS_TO_CHECK = [
     "@pepeNFTchanne",    # 1
-    "@getratpupsik",    # 2  
+    "@getratsup",    # 2  
     "@starcaxar",     # 3
-    "@hilsochka",    # 4
+    "@amnezia_stars",    # 4
     "@De_Riz ",    # 5
     "@angell_kiiiss",    # 6
     "@zolognaaakk",    # 7 - НОВЫЙ ⭐
